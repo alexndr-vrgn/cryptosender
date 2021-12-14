@@ -47,7 +47,7 @@ def welcome_user(m):
 
 @b.message_handler(commands=['settings'])
 def initialise_settings(m):
-    b.send_message(m.chat.id, 'Итак... Приступим!')
+    b.send_message(m.chat.id, 'И так... Приступим!')
     time.sleep(2)
     b.send_message(m.chat.id, 'Загрузка...')
     time.sleep(2)
@@ -199,6 +199,6 @@ def scheduler():
         time.sleep(1)
 
 
-scheduler()
 b.polling()
+scheduler()
 
