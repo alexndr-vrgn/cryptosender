@@ -1,18 +1,13 @@
 from datetime import datetime
 from configs.config_for_cryptobot import config as cfg
-from modules import request, prettify
+from modules import request, prettify, fetchone
 import telebot
 import time
-import pymysql.cursors
 import schedule
 
 b = telebot.TeleBot(cfg.API_TOKEN)
 
-con = pymysql.connect(host=cfg.db_host,
-                      user=cfg.db_user,
-                      password=cfg.db_pass,
-                      database=cfg.db_db,
-                      cursorclass=pymysql.cursors.DictCursor)
+
 
 
 def ts():
@@ -32,26 +27,21 @@ def welcome_user(m):
                              f'получать уведомления.')
     time.sleep(3)
     b.send_message(m.chat.id, 'Чтобы начать настройку выбери "/settings" в меню.')
-    try:
-        with con.cursor() as cursor:
-            sql = "SELECT `user_id` FROM `users_choice`"
-            cursor.execute(sql)
-            result = cursor.fetchone()
-        if result is None:
-            with con.cursor() as cursor:
-                sql = "INSERT INTO `users_choice` (`user_id`, `username`, `tokens`, `currency`, `period`) " \
-                      "VALUES (%s, %s, %s, %s, %s)"
-                cursor.execute(sql, (m.from_user.id, m.from_user.first_name, '', '', 0))
-            con.commit()
-            print(ts() + ' [INFO]: Пользователь успешно добавлен!')
-        elif result['user_id'] == m.from_user.id:
-            print(ts() + ' [INFO]: Пользователь существует!')
+    response_to_db = fetchone.fetchdata('user_id')
+    if response_to_db is None:
+        result = fetchone.singup_user(m.from_user.id, m.from_user.first_name)
+        if result == 'Success':
+            print('[INFO]: Пользователь успешно зарегистрирован!')
+        elif result == 'Fail':
+            print('[INFO]: Ошибка регистрации пользователя!')
         else:
-            ex_ = 'Произошла ошибка во время выполнения запроса.'
-            print(ts() + ' [INFO]: ' + ex_)
-            b.send_message(m.chat.id, f'{ex_} Повторите попытку позже.')
-    except Exception as _ex:
-        print(ts() + f'[INFO 1]: Ошибка {_ex}')
+            print('[INFO]: Ошибка -- повторите запрос позже!')
+    elif response_to_db == m.from_user.id:
+        print('[INFO]: Пользователь существует!')
+    else:
+        ex_ = 'Произошла ошибка во время выполнения запроса.'
+        print(ts() + ' [INFO]: ' + ex_)
+        b.send_message(m.chat.id, f'{ex_} Повторите попытку позже.')
 
 
 @b.message_handler(commands=['settings'])
@@ -68,5 +58,29 @@ def initialise_settings(m):
 def search_coin(m):
     user_request = m.text
     if user_request.lower() == 'exit':
-        # Сделать проверку добавленных монет.
-        pass
+        if fetchone.fetchone('tokens', m.from_user.id) is None or fetchone.fetchone('tokens', m.from_user.id)['tokens'] == 0:
+            b.send_message(m.chat.id, "Очень жаль, что ты не добавил монеты. Возможно это произошло из-за ошибки.")
+            time.sleep(1)
+            b.send_message(m.chat.id, "Тебе придётся начать настройку(/settings) заново.")
+        else:
+            b.send_message(m.chat.id, "Отлично, монеты успешно добавлены!")
+            time.sleep(1)
+            b.send_message(m.chat.id, "Теперь выбери как часто ты хочешь получать уведомление.")
+            time.sleep(1)
+            b.send_message(m.chat.id, "Выбери временной диапазон:", reply_markup=gen_time_markup())
+    else:
+        for x in request.get_coin_names():
+            if user_request == x['symbol'] or m.text.upper() == x['symbol']:
+                slug = x['slug']
+                req = fetchone.fetchone('tokens', m.from_user.id)['tokens']
+                if req == '':
+                    change_list = slug
+                else:
+                    fUser =
+
+                fetchone.update_data('', change_list, m.from_user.id)
+            else:
+                b.send_message(m.chat.id, "Данная монета не найдена. Возможно её ранг слишком низок.")
+                time.sleep(1)
+                b.send_message(m.chat.id, "Попробуй ввести другую монету.")
+        b.register_next_step_handler(m, search_coin)
