@@ -42,10 +42,6 @@ def get_coin_names():
     except Exception as _ex:
         print(f'[INFO]: Ошибка -- {_ex}')
     for el in response['data']['cryptoCurrencyList']:
-        symbol = el['symbol']
-        slug = el['slug']
-        answer.append({
-            'symbol': symbol,
-            'slug': slug
-        })
+        topCoins = dict({el['symbol']: el['slug']})
+        answer.append(topCoins)
     return answer
