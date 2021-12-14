@@ -1,10 +1,12 @@
 from datetime import datetime
+
+import schedule
+
 from configs.config_for_cryptobot import config as cfg
 from modules import request, prettify, fetchone
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import time
-import schedule
 
 b = telebot.TeleBot(cfg.API_TOKEN)
 
@@ -24,8 +26,8 @@ def welcome_user(m):
                              f'информацию об интересующих монетах.\n\n Для начала тебе нужно настроить меня. Тебе '
                              f'предстоит выбрать необходимые монеты, валюту конвертации, а также как часто ты хочешь'
                              f' получать уведомления.')
-    response_to_db = fetchone.fetchme()
-    if response_to_db is None or response_to_db[0]['user_id'] != m.from_user.id:
+    response_to_db = fetchone.fetchme_reg()
+    if response_to_db is None or response_to_db['user_id'] != m.from_user.id:
         result = fetchone.singup_user(m.from_user.id, m.from_user.first_name)
         if result == 'Success':
             print('[INFO]: Пользователь успешно зарегистрирован!')
@@ -33,7 +35,7 @@ def welcome_user(m):
             print('[INFO]: Ошибка регистрации пользователя!')
         else:
             print('[INFO]: Ошибка -- повторите запрос позже!')
-    elif response_to_db[0]['user_id'] == m.from_user.id:
+    elif response_to_db['user_id'] == m.from_user.id:
         print('[INFO]: Пользователь существует!')
     else:
         ex_ = 'Произошла ошибка во время выполнения запроса.'
@@ -175,6 +177,11 @@ def callback_query_handle(call):
         sender(cid)
 
 
+@b.message_handler(commands=['rush'])
+def rush_message(m):
+    sender(m.chat.id)
+
+
 def sender(chat_id):
     dataFromDb = fetchone.fetchall(chat_id)
     message = prettify.prettify(request.do_request(dataFromDb['tokens'], dataFromDb['currency']), dataFromDb['currency'])
@@ -182,22 +189,16 @@ def sender(chat_id):
 
 
 def scheduler():
-    dbData = []
-    dbData.append(fetchone.fetchme())
-    if dbData is not None:
-        for element in dbData:
-            timing = element['period']
-            user_id = element['user_id']
-            schedule.every(timing).hours.do(sender, user_id)
-            while True:
-                schedule.run_pending()
-                time.sleep(1)
-
-
-@b.message_handler(commands=['rush'])
-def rush_message(m):
-    sender(m.chat.id)
+    dbData = fetchone.fetchme()
+    for element in dbData:
+        timing = element['period']
+        uid = element['user_id']
+        schedule.every(timing).hours.do(sender, uid)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 
 scheduler()
-b.infinity_polling()
+b.polling()
+

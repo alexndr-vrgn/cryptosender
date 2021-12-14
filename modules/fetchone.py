@@ -77,7 +77,19 @@ def fetchme():
         with con.cursor() as cursor:
             sql = "SELECT * FROM `users_choice`"
             cursor.execute(sql)
-            result = cursor.fetchone()
+            result = cursor.fetchall()
     except Exception as _ex:
         print(f'[INFO 6]: {_ex}')
+    return result
+
+
+def fetchme_reg():
+    result = None
+    try:
+        with con.cursor() as cursor:
+            sql = "SELECT * FROM `users_choice`"
+            cursor.execute(sql)
+            result = cursor.fetchone()
+    except Exception as _ex:
+        print(f'[INFO 7]: {_ex}')
     return result
