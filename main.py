@@ -2,12 +2,11 @@ from datetime import datetime
 from configs.config_for_cryptobot import config as cfg
 from modules import request, prettify, fetchone
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import time
 import schedule
 
 b = telebot.TeleBot(cfg.API_TOKEN)
-
-
 
 
 def ts():
@@ -69,18 +68,113 @@ def search_coin(m):
             time.sleep(1)
             b.send_message(m.chat.id, "Выбери временной диапазон:", reply_markup=gen_time_markup())
     else:
+        yourTokens = []
         for x in request.get_coin_names():
             if user_request == x['symbol'] or m.text.upper() == x['symbol']:
                 slug = x['slug']
                 req = fetchone.fetchone('tokens', m.from_user.id)['tokens']
                 if req == '':
                     change_list = slug
+                    b.send_message(m.chat.id, "Добавил монету " + user_request + " в Избранное.")
                 else:
-                    fUser =
-
-                fetchone.update_data('', change_list, m.from_user.id)
+                    change_list = req + ',' + slug
+                    for el in req:
+                        if el == x['slug']:
+                            uToken = x['symbol']
+                            yourTokens.append(uToken)
+                    b.send_message(m.chat.id, "Монеты в Избранном:\n" + ", ".join(yourTokens))
+                    b.send_message(m.chat.id, 'Чтобы завершить добавление монет в избранное, напиши "exit"')
+                fetchone.update_data('tokens', change_list, m.from_user.id)
             else:
                 b.send_message(m.chat.id, "Данная монета не найдена. Возможно её ранг слишком низок.")
                 time.sleep(1)
                 b.send_message(m.chat.id, "Попробуй ввести другую монету.")
         b.register_next_step_handler(m, search_coin)
+
+
+def gen_time_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 4
+    markup.add(InlineKeyboardButton("1 час", callback_data="time_1"),
+               InlineKeyboardButton("6 часов", callback_data="time_6"),
+               InlineKeyboardButton("12 часов", callback_data="time_12"),
+               InlineKeyboardButton("24 часа", callback_data="time_24"))
+    return markup
+
+
+def gen_curr_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+    markup.add(InlineKeyboardButton("USD", callback_data="curr_usd"),
+               InlineKeyboardButton("BTC", callback_data="curr_btc"))
+    return markup
+
+
+@b.callback_query_handler(func=lambda call: True)
+def callback_query_handle(call):
+    user_id = call.from_user.id
+    cid = call.message.chat.id
+    col1 = 'period'
+    col2 = 'currency'
+    if call.data == 'time_1':
+        timing = '1'
+        fetchone.update_data(col1, timing, user_id)
+        b.send_message(cid, "Отлично! Я буду присылать тебе уведомления каждый час!")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+    elif call.data == 'time_6':
+        timing = '6'
+        fetchone.update_data(col1, timing, user_id)
+        b.send_message(cid, "Отлично! Я буду присылать тебе уведомления каждые 6 часов!")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+    elif call.data == 'time_12':
+        timing = '12'
+        fetchone.update_data(col1, timing, user_id)
+        b.send_message(cid, "Отлично! Я буду присылать тебе уведомления каждые 6 часов!")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+    elif call.data == 'time_24':
+        timing = '24'
+        fetchone.update_data(col1, timing, user_id)
+        b.send_message(cid, "Отлично! Я буду присылать тебе уведомления каждые 6 часов!")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+    b.send_message(cid, "Теперь выбери валюту в который будешь получать информацию:", reply_markup=gen_curr_markup())
+    if call.data == 'curr_usd':
+        curr = 'USD'
+        fetchone.update_data(col2, curr, user_id)
+        b.send_message(cid, "Сейчас я отправлю тебе первую информацию. С этого времени начнётся отсчёт.")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+        sender(cid)
+    elif call.data == 'curr_btc':
+        curr = 'BTC'
+        fetchone.update_data(col2, curr, user_id)
+        b.send_message(cid, "Сейчас я отправлю тебе первую информацию. С этого времени начнётся отсчёт.")
+        b.edit_message_reply_markup(cid, message_id=call.message.message_id-1, reply_markup=None)
+        sender(cid)
+
+
+def sender(chat_id):
+    dataFromDb = fetchone.fetchall(chat_id)
+    message = prettify.prettify(request.do_request(dataFromDb['tokens'], dataFromDb['currency']), dataFromDb['currency'])
+    b.send_message(chat_id, '\n'.join(message))
+
+
+def scheduler():
+    dbData = fetchone.fetchme()
+    for element in dbData:
+        timing = element['period']
+        user_id = element['user_id']
+        schedule.every(timing).do(sender, user_id)
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
+
+def send_one_message():
+    b.send_message(1003228113, 'Здарова пидр, мы начинаем!')
+
+
+@b.message_handler(commands=['rush'])
+def rush_message(m):
+    sender(m.chat.id)
+
+
+scheduler()

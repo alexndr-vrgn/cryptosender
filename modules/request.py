@@ -9,7 +9,6 @@ url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest'
 ua = UserAgent()
 
 
-
 def do_request(slug, currency):
     answ = None
     parameters = {
@@ -50,12 +49,3 @@ def get_coin_names():
             'slug': slug
         })
     return answer
-
-
-def search_coin(coin):
-
-
-
-print(search_coin('BTC'))
-
-

@@ -59,3 +59,25 @@ def fetchone(col: str, user_id: int):
     return result
 
 
+def fetchall(user_id: int):
+    result = None
+    try:
+        with con.cursor() as cursor:
+            sql = "SELECT * FROM `users_choice` WHERE `user_id` = %s"
+            cursor.execute(sql, (user_id,))
+            result = cursor.fetchone()
+    except Exception as _ex:
+        print(f'[INFO 5]: {_ex}')
+    return result
+
+
+def fetchme():
+    result = None
+    try:
+        with con.cursor() as cursor:
+            sql = "SELECT * FROM `users_choice`"
+            cursor.execute(sql)
+            result = cursor.fetchall()
+    except Exception as _ex:
+        print(f'[INFO 6]: {_ex}')
+    return result
