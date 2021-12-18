@@ -1,6 +1,6 @@
 # CRYPTOSENDER
 
-Cryptosender for telegram bot using pyTelegramBotAPI, pymysql, schedule and crypthography
+Cryptosender for telegram bot using pyTelegramBotAPI, pymysql, schedule and crypthography.
 
 If you have some suggestion leave me an email.
 
